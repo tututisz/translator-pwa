@@ -55,6 +55,9 @@ export function MessageBubble({
 }: MessageBubbleProps) {
   const { isSpeaking, speak, stop } = useTextToSpeech();
   const colors = BUBBLE_COLORS[language] || BUBBLE_COLORS['en'];
+  
+  // Ensure timestamp is a Date object
+  const normalizedTimestamp = timestamp instanceof Date ? timestamp : new Date(timestamp);
 
   const handleSpeak = () => {
     if (isSpeaking) {
@@ -74,7 +77,7 @@ export function MessageBubble({
             <p className="text-sm font-medium mb-1">{LANGUAGE_NAMES[language]}</p>
             <p className="text-sm break-words">{text}</p>
             <p className="text-xs opacity-70 mt-2">
-              {timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              {normalizedTimestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
             </p>
           </div>
           <Button

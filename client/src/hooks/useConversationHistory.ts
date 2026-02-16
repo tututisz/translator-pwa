@@ -52,15 +52,30 @@ export function useConversationHistory() {
     loadConversations();
   }, []);
 
+  // Hydrate conversations with proper Date objects
+  const hydrateConversation = useCallback((conv: any): Conversation => {
+    return {
+      ...conv,
+      createdAt: conv.createdAt instanceof Date ? conv.createdAt : new Date(conv.createdAt),
+      updatedAt: conv.updatedAt instanceof Date ? conv.updatedAt : new Date(conv.updatedAt),
+      messages: (conv.messages || []).map((msg: any) => ({
+        ...msg,
+        timestamp: msg.timestamp instanceof Date ? msg.timestamp : new Date(msg.timestamp),
+      })),
+    };
+  }, []);
+
   // Save conversations to localStorage
   const saveConversations = useCallback((convs: Conversation[]) => {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(convs));
-      setConversations(convs);
+      // Hydrate before setting state to ensure Date objects
+      const hydrated = convs.map(hydrateConversation);
+      setConversations(hydrated);
     } catch (err) {
       console.error('Failed to save conversations:', err);
     }
-  }, []);
+  }, [hydrateConversation]);
 
   const createConversation = useCallback(
     (sourceLanguage: string, targetLanguage: string): Conversation => {
@@ -86,9 +101,15 @@ export function useConversationHistory() {
     (message: HistoryMessage) => {
       if (!currentConversation) return;
 
+      // Ensure message timestamp is a Date
+      const normalizedMessage: HistoryMessage = {
+        ...message,
+        timestamp: message.timestamp instanceof Date ? message.timestamp : new Date(message.timestamp),
+      };
+
       const updated = {
         ...currentConversation,
-        messages: [...currentConversation.messages, message],
+        messages: [...currentConversation.messages, normalizedMessage],
         updatedAt: new Date(),
       };
 
@@ -123,13 +144,15 @@ export function useConversationHistory() {
   const loadConversation = useCallback((id: string) => {
     const conv = conversations.find((c) => c.id === id);
     if (conv) {
-      setCurrentConversation(conv);
+      // Hydrate conversation before setting as current
+      const hydrated = hydrateConversation(conv);
+      setCurrentConversation(hydrated);
     }
-  }, [conversations]);
+  }, [conversations, hydrateConversation]);
 
   return {
-    conversations,
-    currentConversation,
+    conversations: conversations.map(hydrateConversation),
+    currentConversation: currentConversation ? hydrateConversation(currentConversation) : null,
     createConversation,
     addMessage,
     deleteConversation,

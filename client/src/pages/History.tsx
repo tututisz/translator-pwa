@@ -37,7 +37,10 @@ export default function History() {
 
   const handleDownloadConversation = (conv: Conversation) => {
     const text = conv.messages
-      .map((msg) => `[${msg.timestamp.toLocaleTimeString()}] ${msg.language}: ${msg.text}`)
+      .map((msg) => {
+        const normalizedTimestamp = msg.timestamp instanceof Date ? msg.timestamp : new Date(msg.timestamp);
+        return `[${normalizedTimestamp.toLocaleTimeString()}] ${msg.language}: ${msg.text}`;
+      })
       .join('\n');
 
     const element = document.createElement('a');
