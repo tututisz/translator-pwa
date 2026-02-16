@@ -1,13 +1,16 @@
 import { useState, useCallback, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Mic, MicOff, Volume2, VolumeX } from 'lucide-react';
+import { Mic, MicOff, Volume2, VolumeX, History as HistoryIcon } from 'lucide-react';
+import { Link } from 'wouter';
 import { LanguageSelector } from '@/components/LanguageSelector';
 import { ConversationPanel } from '@/components/ConversationPanel';
 import { AudioWaveform } from '@/components/AudioWaveform';
 import { useSpeechRecognition } from '@/hooks/useSpeechRecognition';
 import { useTranslation } from '@/hooks/useTranslation';
 import { useTextToSpeech } from '@/hooks/useTextToSpeech';
+import { useConversationHistory } from '@/hooks/useConversationHistory';
+import { useOfflineDictionary } from '@/hooks/useOfflineDictionary';
 import { nanoid } from 'nanoid';
 
 interface Message {
@@ -41,11 +44,23 @@ export default function Home() {
   const [targetMessages, setTargetMessages] = useState<Message[]>([]);
   const [currentInput, setCurrentInput] = useState('');
   const [isWaiting, setIsWaiting] = useState(false);
+  const [currentSpeaker, setCurrentSpeaker] = useState<'source' | 'target'>('source');
+
+  const { createConversation, addMessage: addHistoryMessage, currentConversation } =
+    useConversationHistory();
+  const { isOffline, getOfflineTranslation } = useOfflineDictionary();
 
   const { isListening, transcript, interimTranscript, startListening, stopListening } =
     useSpeechRecognition();
   const { translatedText, isTranslating, translate } = useTranslation();
   const { isSpeaking, speak, stop } = useTextToSpeech();
+
+  // Initialize conversation on mount
+  useEffect(() => {
+    if (!currentConversation) {
+      createConversation(sourceLanguage, targetLanguage);
+    }
+  }, []);
 
   // Handle transcript updates
   useEffect(() => {
@@ -66,6 +81,16 @@ export default function Home() {
     };
     setSourceMessages((prev) => [...prev, sourceMsg]);
 
+    // Add to history
+    if (currentConversation) {
+      addHistoryMessage({
+        id: sourceMsg.id,
+        text: sourceMsg.text,
+        language: sourceLanguage,
+        timestamp: sourceMsg.timestamp,
+      });
+    }
+
     // Translate
     setIsWaiting(true);
     await translate(text.trim(), sourceLanguage, targetLanguage);
@@ -84,10 +109,24 @@ export default function Home() {
       };
       setTargetMessages((prev) => [...prev, targetMsg]);
 
+      // Add to history
+      if (currentConversation) {
+        addHistoryMessage({
+          id: targetMsg.id,
+          text: targetMsg.text,
+          language: targetLanguage,
+          timestamp: targetMsg.timestamp,
+          isTranslation: true,
+        });
+      }
+
       // Auto-play translation
       speak(translatedText, targetLanguage);
+
+      // Switch speaker after translation
+      setCurrentSpeaker('target');
     }
-  }, [translatedText, isTranslating, targetLanguage, speak]);
+  }, [translatedText, isTranslating, targetLanguage, speak, currentConversation, addHistoryMessage]);
 
   const handleStartRecording = () => {
     startListening(sourceLanguage);
@@ -108,6 +147,11 @@ export default function Home() {
   const handleSwapLanguages = () => {
     setSourceLanguage(targetLanguage);
     setTargetLanguage(sourceLanguage);
+    setCurrentSpeaker('source');
+  };
+
+  const handleSwitchSpeaker = () => {
+    setCurrentSpeaker(currentSpeaker === 'source' ? 'target' : 'source');
   };
 
   return (
@@ -122,7 +166,15 @@ export default function Home() {
               </div>
               <h1 className="text-2xl font-bold">Translator PWA</h1>
             </div>
-            <p className="text-sm text-muted-foreground">Real-time translation with audio</p>
+            <div className="flex items-center gap-2">
+              <p className="text-sm text-muted-foreground">Real-time translation with audio</p>
+              <Link href="/history">
+                <Button variant="outline" size="sm" className="gap-2">
+                  <HistoryIcon className="w-4 h-4" />
+                  History
+                </Button>
+              </Link>
+            </div>
           </div>
         </div>
       </header>
@@ -157,6 +209,25 @@ export default function Home() {
           </div>
         </Card>
 
+        {/* Current Speaker Indicator */}
+        <Card className="p-4 mb-8 border-border/50 bg-accent/5">
+          <div className="flex items-center justify-between">
+            <div className="text-sm font-medium">
+              Current Speaker:{' '}
+              <span className={LANGUAGE_COLORS[currentSpeaker === 'source' ? sourceLanguage : targetLanguage]}>
+                {currentSpeaker === 'source'
+                  ? LANGUAGE_NAMES[sourceLanguage]
+                  : LANGUAGE_NAMES[targetLanguage]}
+              </span>
+            </div>
+            {isOffline && (
+              <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded">
+                Offline Mode
+              </span>
+            )}
+          </div>
+        </Card>
+
         {/* Recording Controls */}
         <Card className="p-6 mb-8 border-border/50">
           <div className="flex flex-col items-center gap-4">
@@ -167,39 +238,50 @@ export default function Home() {
               />
             )}
 
-            <div className="flex gap-4">
-              {!isListening ? (
-                <Button
-                  onClick={handleStartRecording}
-                  size="lg"
-                  className="gap-2 bg-accent hover:bg-accent/90"
-                >
-                  <Mic className="w-5 h-5" />
-                  Start Recording
-                </Button>
-              ) : (
-                <Button
-                  onClick={handleStopRecording}
-                  size="lg"
-                  variant="destructive"
-                  className="gap-2"
-                >
-                  <MicOff className="w-5 h-5" />
-                  Stop Recording
-                </Button>
-              )}
+            <div className="flex flex-col items-center gap-4">
+              <div className="flex gap-4">
+                {!isListening ? (
+                  <Button
+                    onClick={handleStartRecording}
+                    size="lg"
+                    className="gap-2 bg-accent hover:bg-accent/90"
+                  >
+                    <Mic className="w-5 h-5" />
+                    Start Recording
+                  </Button>
+                ) : (
+                  <Button
+                    onClick={handleStopRecording}
+                    size="lg"
+                    variant="destructive"
+                    className="gap-2"
+                  >
+                    <MicOff className="w-5 h-5" />
+                    Stop Recording
+                  </Button>
+                )}
 
-              {isSpeaking && (
-                <Button
-                  onClick={stop}
-                  size="lg"
-                  variant="outline"
-                  className="gap-2"
-                >
-                  <VolumeX className="w-5 h-5" />
-                  Stop Audio
-                </Button>
-              )}
+                {isSpeaking && (
+                  <Button
+                    onClick={stop}
+                    size="lg"
+                    variant="outline"
+                    className="gap-2"
+                  >
+                    <VolumeX className="w-5 h-5" />
+                    Stop Audio
+                  </Button>
+                )}
+              </div>
+
+              <Button
+                onClick={handleSwitchSpeaker}
+                variant="outline"
+                size="sm"
+                className="gap-2"
+              >
+                ⇄ Switch Speaker
+              </Button>
             </div>
 
             {interimTranscript && (
