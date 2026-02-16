@@ -30,24 +30,14 @@ export function useTranslation(): UseTranslationReturn {
       setIsTranslating(true);
       setError(null);
 
-      const sourceLang = LANGUAGE_NAMES[sourceLanguage] || 'English';
-      const targetLang = LANGUAGE_NAMES[targetLanguage] || 'English';
-
-      // Using a simple translation approach with a free API
-      // For production, consider using a proper translation service
-      const response = await fetch('https://api.mymemory.translated.net/get', {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-
       // Build query parameters
       const params = new URLSearchParams({
         q: text,
         langpair: `${sourceLanguage}|${targetLanguage}`,
       });
 
+      // Using a simple translation approach with a free API
+      // For production, consider using a proper translation service
       const translationResponse = await fetch(
         `https://api.mymemory.translated.net/get?${params.toString()}`
       );
@@ -56,7 +46,7 @@ export function useTranslation(): UseTranslationReturn {
         throw new Error('Translation service error');
       }
 
-      const data = await translationResponse.json();
+      const data = await translationResponse.json() as any;
 
       if (data.responseStatus === 200) {
         setTranslatedText(data.responseData.translatedText);

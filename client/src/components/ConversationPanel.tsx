@@ -57,38 +57,36 @@ export function ConversationPanel({
           </div>
         ) : (
           messages.map((msg) => {
-            // Ensure timestamp is a Date object
             const normalizedTimestamp = msg.timestamp instanceof Date ? msg.timestamp : new Date(msg.timestamp);
-            
             return (
-            <Card
-              key={msg.id}
-              className={`p-3 ${
-                msg.isTranslation ? 'bg-accent/10 border-accent/20' : 'bg-card'
-              }`}
-            >
-              <div className="flex items-start justify-between gap-2">
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm text-foreground break-words">{msg.text}</p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {normalizedTimestamp.toLocaleTimeString()}
-                  </p>
+              <Card
+                key={msg.id}
+                className={`p-3 ${
+                  msg.isTranslation ? 'bg-accent/10 border-accent/20' : 'bg-card'
+                }`}
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm text-foreground break-words">{msg.text}</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {normalizedTimestamp.toLocaleTimeString()}
+                    </p>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleSpeak(msg.text)}
+                    className="flex-shrink-0"
+                  >
+                    <Volume2
+                      className={`w-4 h-4 ${
+                        isSpeaking ? 'text-accent' : 'text-muted-foreground'
+                      }`}
+                    />
+                  </Button>
                 </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleSpeak(msg.text)}
-                  className="flex-shrink-0"
-                >
-                  <Volume2
-                    className={`w-4 h-4 ${
-                      isSpeaking ? 'text-accent' : 'text-muted-foreground'
-                    }`}
-                  />
-                </Button>
-              </div>
-            </Card>
-          );
+              </Card>
+            );
           })
         )}
       </div>
