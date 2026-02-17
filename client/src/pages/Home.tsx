@@ -47,8 +47,6 @@ export default function Home() {
 
   // Track if we've already processed a translation
   const translationProcessedRef = useRef(false);
-  // Track the current speaker language for translation
-  const currentSpeakerLanguageRef = useRef('pt');
 
   const { createConversation, addMessage: addHistoryMessage, currentConversation } =
     useConversationHistory();
@@ -66,11 +64,6 @@ export default function Home() {
     }
   }, []);
 
-  // Update the speaker language reference
-  useEffect(() => {
-    currentSpeakerLanguageRef.current = currentSpeaker === 'source' ? sourceLanguage : targetLanguage;
-  }, [currentSpeaker, sourceLanguage, targetLanguage]);
-
   // Handle transcript updates
   useEffect(() => {
     if (transcript && !isListening) {
@@ -85,7 +78,7 @@ export default function Home() {
     const spokenLanguage = currentSpeaker === 'source' ? sourceLanguage : targetLanguage;
     const otherLanguage = currentSpeaker === 'source' ? targetLanguage : sourceLanguage;
 
-    // Add message to the appropriate panel
+    // Create message with the spoken language
     const msg: Message = {
       id: nanoid(),
       text: text.trim(),
@@ -93,7 +86,8 @@ export default function Home() {
       timestamp: new Date(),
     };
 
-    if (currentSpeaker === 'source') {
+    // Add to the correct panel based on spoken language
+    if (spokenLanguage === sourceLanguage) {
       setSourceMessages((prev) => [...prev, msg]);
     } else {
       setTargetMessages((prev) => [...prev, msg]);
@@ -125,7 +119,7 @@ export default function Home() {
       const spokenLanguage = currentSpeaker === 'source' ? sourceLanguage : targetLanguage;
       const translationLanguage = currentSpeaker === 'source' ? targetLanguage : sourceLanguage;
 
-      const targetMsg: Message = {
+      const translationMsg: Message = {
         id: nanoid(),
         text: translatedText,
         language: translationLanguage,
@@ -133,20 +127,20 @@ export default function Home() {
         isTranslation: true,
       };
 
-      // Add to the opposite panel
-      if (currentSpeaker === 'source') {
-        setTargetMessages((prev) => [...prev, targetMsg]);
+      // Add to the panel matching the translation language
+      if (translationLanguage === sourceLanguage) {
+        setSourceMessages((prev) => [...prev, translationMsg]);
       } else {
-        setSourceMessages((prev) => [...prev, targetMsg]);
+        setTargetMessages((prev) => [...prev, translationMsg]);
       }
 
       // Add to history
       if (currentConversation) {
         addHistoryMessage({
-          id: targetMsg.id,
-          text: targetMsg.text,
+          id: translationMsg.id,
+          text: translationMsg.text,
           language: translationLanguage,
-          timestamp: targetMsg.timestamp,
+          timestamp: translationMsg.timestamp,
           isTranslation: true,
         });
       }
@@ -183,6 +177,10 @@ export default function Home() {
     setTargetLanguage(sourceLanguage);
     setCurrentSpeaker('source');
     translationProcessedRef.current = false;
+    // Swap messages too
+    const temp = sourceMessages;
+    setSourceMessages(targetMessages);
+    setTargetMessages(temp);
   };
 
   const handleSwitchSpeaker = () => {
