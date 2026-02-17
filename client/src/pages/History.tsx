@@ -3,7 +3,8 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { MessageBubble } from '@/components/MessageBubble';
 import { useConversationHistory, Conversation } from '@/hooks/useConversationHistory';
-import { ArrowLeft, Trash2, Download } from 'lucide-react';
+import { useSummary } from '@/hooks/useSummary';
+import { ArrowLeft, Trash2, Download, FileText } from 'lucide-react';
 import { Link } from 'wouter';
 
 const LANGUAGE_NAMES: Record<string, string> = {
@@ -12,14 +13,23 @@ const LANGUAGE_NAMES: Record<string, string> = {
   'es': '🇪🇸 Español',
   'fr': '🇫🇷 Français',
   'ko': '🇰🇷 한국어',
+  'it': '🇮🇹 Italiano',
+  'de': '🇩🇪 Deutsch',
+  'zh': '🇨🇳 中文',
+  'ja': '🇯🇵 日本語',
+  'ru': '🇷🇺 Русский',
+  'ar': '🇸🇦 العربية',
+  'hi': '🇮🇳 हिन्दी',
 };
 
 export default function History() {
   const { conversations, currentConversation, deleteConversation, loadConversation } =
     useConversationHistory();
+  const { summary, isGenerating, generateSummary } = useSummary();
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(
     currentConversation
   );
+  const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
 
   const handleSelectConversation = (conv: Conversation) => {
     setSelectedConversation(conv);
@@ -35,20 +45,437 @@ export default function History() {
     }
   };
 
-  const handleDownloadConversation = (conv: Conversation) => {
-    const text = conv.messages
-      .map((msg) => {
-        const normalizedTimestamp = msg.timestamp instanceof Date ? msg.timestamp : new Date(msg.timestamp);
-        return `[${normalizedTimestamp.toLocaleTimeString()}] ${msg.language}: ${msg.text}`;
-      })
-      .join('\n');
+  const handleGenerateSummary = async () => {
+    if (!selectedConversation) return;
+    
+    setIsGeneratingSummary(true);
+    try {
+      await generateSummary(
+        selectedConversation.messages,
+        selectedConversation.sourceLanguage,
+        selectedConversation.targetLanguage
+      );
+    } finally {
+      setIsGeneratingSummary(false);
+    }
+  };
 
+  const generateHTMLContent = (conv: Conversation, summaryData: any) => {
+    const htmlTemplate = `
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Conversa Traduzida - ${LANGUAGE_NAMES[conv.sourceLanguage]} → ${LANGUAGE_NAMES[conv.targetLanguage]}</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+        
+        .header .subtitle {
+            font-size: 1.2em;
+            opacity: 0.9;
+            margin-bottom: 20px;
+        }
+        
+        .header .meta {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            font-size: 0.9em;
+            opacity: 0.8;
+        }
+        
+        .content {
+            padding: 30px;
+        }
+        
+        .summary-section {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 30px;
+            color: white;
+        }
+        
+        .summary-section h2 {
+            font-size: 1.8em;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .summary-content {
+            font-size: 1.1em;
+            line-height: 1.6;
+            margin-bottom: 20px;
+        }
+        
+        .key-points {
+            background: rgba(255,255,255,0.1);
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+        
+        .key-points h3 {
+            font-size: 1.3em;
+            margin-bottom: 15px;
+        }
+        
+        .key-points ul {
+            list-style: none;
+            padding: 0;
+        }
+        
+        .key-points li {
+            padding: 8px 0;
+            padding-left: 25px;
+            position: relative;
+        }
+        
+        .key-points li:before {
+            content: "✨";
+            position: absolute;
+            left: 0;
+        }
+        
+        .statistics {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        .stat-item {
+            background: rgba(255,255,255,0.1);
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 1.5em;
+            font-weight: bold;
+            display: block;
+        }
+        
+        .stat-label {
+            font-size: 0.9em;
+            opacity: 0.8;
+        }
+        
+        .conversation {
+            margin-top: 30px;
+        }
+        
+        .conversation h2 {
+            font-size: 1.8em;
+            margin-bottom: 20px;
+            color: #333;
+            text-align: center;
+        }
+        
+        .messages {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        .message {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            padding: 15px;
+            border-radius: 15px;
+            max-width: 80%;
+            word-wrap: break-word;
+        }
+        
+        .message.source {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            align-self: flex-start;
+            border-bottom-left-radius: 5px;
+        }
+        
+        .message.target {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            align-self: flex-end;
+            border-bottom-right-radius: 5px;
+            flex-direction: row-reverse;
+        }
+        
+        .message.target .message-content {
+            text-align: right;
+        }
+        
+        .message-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2em;
+            flex-shrink: 0;
+        }
+        
+        .message-content {
+            flex: 1;
+        }
+        
+        .message-text {
+            font-size: 1.1em;
+            line-height: 1.5;
+            margin-bottom: 5px;
+        }
+        
+        .original-text {
+            font-size: 1.2em;
+            font-weight: 600;
+            margin-bottom: 8px;
+            line-height: 1.4;
+        }
+        
+        .translation-text {
+            font-size: 0.9em;
+            opacity: 0.8;
+            padding-top: 8px;
+            border-top: 1px solid rgba(255,255,255,0.2);
+            font-style: italic;
+        }
+        
+        .message-meta {
+            font-size: 0.8em;
+            opacity: 0.7;
+        }
+        
+        .translation-badge {
+            background: rgba(255,255,255,0.2);
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.7em;
+            margin-left: 8px;
+        }
+        
+        .footer {
+            background: #f8f9fa;
+            padding: 20px;
+            text-align: center;
+            color: #666;
+            font-size: 0.9em;
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 10px;
+            }
+            
+            .header h1 {
+                font-size: 2em;
+            }
+            
+            .header .meta {
+                flex-direction: column;
+                gap: 10px;
+            }
+            
+            .message {
+                max-width: 90%;
+            }
+            
+            .statistics {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🗣️ Conversa Traduzida</h1>
+            <div class="subtitle">
+                ${LANGUAGE_NAMES[conv.sourceLanguage]} → ${LANGUAGE_NAMES[conv.targetLanguage]}
+            </div>
+            <div class="meta">
+                <span>📅 ${new Date(conv.createdAt).toLocaleDateString('pt-BR')}</span>
+                <span>🕐 ${new Date(conv.createdAt).toLocaleTimeString('pt-BR')}</span>
+                <span>💬 ${conv.messages.length} mensagens</span>
+            </div>
+        </div>
+        
+        <div class="content">
+            ${summaryData ? `
+            <div class="summary-section">
+                <h2>📋 Resumo da Conversa</h2>
+                <div class="summary-content">
+                    ${summaryData.summary}
+                </div>
+                
+                ${summaryData.keyPoints && summaryData.keyPoints.length > 0 ? `
+                <div class="key-points">
+                    <h3>🎯 Pontos Principais</h3>
+                    <ul>
+                        ${summaryData.keyPoints.map((point: string) => `<li>${point}</li>`).join('')}
+                    </ul>
+                </div>
+                ` : ''}
+                
+                ${summaryData.statistics ? `
+                <div class="statistics">
+                    <div class="stat-item">
+                        <span class="stat-value">${summaryData.statistics.totalMessages}</span>
+                        <span class="stat-label">Mensagens</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-value">${summaryData.statistics.totalWords}</span>
+                        <span class="stat-label">Palavras</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-value">${summaryData.statistics.duration}</span>
+                        <span class="stat-label">Duração</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-value">${summaryData.statistics.languagesUsed.length}</span>
+                        <span class="stat-label">Idiomas</span>
+                    </div>
+                </div>
+                ` : ''}
+            </div>
+            ` : ''}
+            
+            <div class="conversation">
+                <h2>💬 Conversa Completa</h2>
+                <div class="messages">
+                    ${(() => {
+                        // Group messages by original and translation pairs
+                        const groupedMessages = [];
+                        for (let i = 0; i < conv.messages.length; i++) {
+                            const msg = conv.messages[i];
+                            if (!msg.isTranslation) {
+                                // Look for the next translation
+                                const nextMsg = conv.messages[i + 1];
+                                if (nextMsg && nextMsg.isTranslation) {
+                                    groupedMessages.push({
+                                        original: msg,
+                                        translation: nextMsg
+                                    });
+                                    i++; // Skip the translation as it's now grouped
+                                } else {
+                                    groupedMessages.push({
+                                        original: msg,
+                                        translation: null
+                                    });
+                                }
+                            }
+                        }
+                        
+                        return groupedMessages.map((group, index) => {
+                            const normalizedTimestamp = group.original.timestamp instanceof Date ? group.original.timestamp : new Date(group.original.timestamp);
+                            return `
+                            <div class="message ${group.original.language === conv.sourceLanguage ? 'source' : 'target'}">
+                                <div class="message-avatar">
+                                    ${group.original.language === conv.sourceLanguage ? '👤' : '🤖'}
+                                </div>
+                                <div class="message-content">
+                                    <div class="message-text">
+                                        <div class="original-text">
+                                            ${group.original.text}
+                                        </div>
+                                        ${group.translation ? `
+                                        <div class="translation-text">
+                                            ${group.translation.text}
+                                        </div>
+                                        ` : ''}
+                                    </div>
+                                    <div class="message-meta">
+                                        ${LANGUAGE_NAMES[group.original.language]} • ${normalizedTimestamp.toLocaleTimeString('pt-BR')}
+                                        ${group.translation ? ` • ${LANGUAGE_NAMES[group.translation.language]}` : ''}
+                                    </div>
+                                </div>
+                            </div>
+                            `;
+                        }).join('');
+                    })()}
+                </div>
+            </div>
+        </div>
+        
+        <div class="footer">
+            Gerado pelo Translator PWA • ${new Date().toLocaleDateString('pt-BR')} • 
+            <a href="#" style="color: #667eea; text-decoration: none;">Powered by AI</a>
+        </div>
+    </div>
+</body>
+</html>`;
+    
+    return htmlTemplate;
+  };
+
+  const handleDownloadConversation = async (conv: Conversation) => {
+    let summaryData = summary;
+    
+    // Generate summary if not available
+    if (!summaryData && conv.messages.length > 0) {
+      setIsGeneratingSummary(true);
+      try {
+        await generateSummary(
+          conv.messages,
+          conv.sourceLanguage,
+          conv.targetLanguage
+        );
+        summaryData = summary;
+      } catch (error) {
+        console.error('Error generating summary for download:', error);
+      } finally {
+        setIsGeneratingSummary(false);
+      }
+    }
+    
+    const htmlContent = generateHTMLContent(conv, summaryData);
+    
     const element = document.createElement('a');
     element.setAttribute(
       'href',
-      'data:text/plain;charset=utf-8,' + encodeURIComponent(text)
+      'data:text/html;charset=utf-8,' + encodeURIComponent(htmlContent)
     );
-    element.setAttribute('download', `conversation-${conv.id}.txt`);
+    element.setAttribute('download', `conversation-${conv.id}.html`);
     element.style.display = 'none';
     document.body.appendChild(element);
     element.click();
@@ -142,16 +569,71 @@ export default function History() {
                       {new Date(selectedConversation.createdAt).toLocaleString()}
                     </p>
                   </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleDownloadConversation(selectedConversation)}
-                    className="gap-2"
-                  >
-                    <Download className="w-4 h-4" />
-                    Download
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleGenerateSummary}
+                      disabled={isGeneratingSummary || isGenerating}
+                      className="gap-2"
+                    >
+                      <FileText className="w-4 h-4" />
+                      {isGeneratingSummary || isGenerating ? 'Generating...' : 'Summary'}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleDownloadConversation(selectedConversation)}
+                      disabled={isGeneratingSummary}
+                      className="gap-2"
+                    >
+                      <Download className="w-4 h-4" />
+                      Download
+                    </Button>
+                  </div>
                 </div>
+
+                {summary && (
+                  <Card className="p-4 mb-6 border-border/50 bg-accent/5">
+                    <h3 className="text-lg font-semibold mb-3">📋 Resumo da Conversa</h3>
+                    <p className="text-sm text-foreground mb-3">{summary.summary}</p>
+                    {summary.keyPoints && summary.keyPoints.length > 0 && (
+                      <div className="mt-3">
+                        <h4 className="text-sm font-medium mb-2">🎯 Pontos Principais:</h4>
+                        <ul className="text-sm text-muted-foreground space-y-1">
+                          {summary.keyPoints.map((point, index) => (
+                            <li key={index} className="flex items-start gap-2">
+                              <span className="text-accent">•</span>
+                              <span>{point}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    {summary.statistics && (
+                      <div className="mt-3 pt-3 border-t border-border/50">
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                          <div className="text-center">
+                            <div className="font-semibold text-accent">{summary.statistics.totalMessages}</div>
+                            <div className="text-muted-foreground">Mensagens</div>
+                          </div>
+                          <div className="text-center">
+                            <div className="font-semibold text-accent">{summary.statistics.totalWords}</div>
+                            <div className="text-muted-foreground">Palavras</div>
+                          </div>
+                          <div className="text-center">
+                            <div className="font-semibold text-accent">{summary.statistics.duration}</div>
+                            <div className="text-muted-foreground">Duração</div>
+                          </div>
+                          <div className="text-center">
+                            <div className="font-semibold text-accent">{summary.statistics.languagesUsed.length}</div>
+                            <div className="text-muted-foreground">Idiomas</div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </Card>
+                )}
 
                 <div className="space-y-4 max-h-[500px] overflow-y-auto">
                   {selectedConversation.messages.length === 0 ? (
