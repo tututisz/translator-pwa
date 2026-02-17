@@ -47,6 +47,8 @@ export default function Home() {
 
   // Track if we've already processed a translation
   const translationProcessedRef = useRef(false);
+  // Track the current speaker language for translation
+  const currentSpeakerLanguageRef = useRef('pt');
 
   const { createConversation, addMessage: addHistoryMessage, currentConversation } =
     useConversationHistory();
@@ -64,12 +66,17 @@ export default function Home() {
     }
   }, []);
 
+  // Update the speaker language reference
+  useEffect(() => {
+    currentSpeakerLanguageRef.current = currentSpeaker === 'source' ? sourceLanguage : targetLanguage;
+  }, [currentSpeaker, sourceLanguage, targetLanguage]);
+
   // Handle transcript updates
   useEffect(() => {
     if (transcript && !isListening) {
       handleTranscriptComplete(transcript);
     }
-  }, [transcript, isListening, currentSpeaker, sourceLanguage, targetLanguage, currentConversation, addHistoryMessage]);
+  }, [transcript, isListening]);
 
   const handleTranscriptComplete = async (text: string) => {
     if (!text.trim()) return;
@@ -114,33 +121,44 @@ export default function Home() {
       translationProcessedRef.current = true;
       setIsWaiting(false);
 
+      // Get the language of the speaker who just spoke
+      const spokenLanguage = currentSpeaker === 'source' ? sourceLanguage : targetLanguage;
+      const translationLanguage = currentSpeaker === 'source' ? targetLanguage : sourceLanguage;
+
       const targetMsg: Message = {
         id: nanoid(),
         text: translatedText,
-        language: targetLanguage,
+        language: translationLanguage,
         timestamp: new Date(),
         isTranslation: true,
       };
-      setTargetMessages((prev) => [...prev, targetMsg]);
+
+      // Add to the opposite panel
+      if (currentSpeaker === 'source') {
+        setTargetMessages((prev) => [...prev, targetMsg]);
+      } else {
+        setSourceMessages((prev) => [...prev, targetMsg]);
+      }
 
       // Add to history
       if (currentConversation) {
         addHistoryMessage({
           id: targetMsg.id,
           text: targetMsg.text,
-          language: targetLanguage,
+          language: translationLanguage,
           timestamp: targetMsg.timestamp,
           isTranslation: true,
         });
       }
 
       // Auto-play translation
-      speak(translatedText, targetLanguage);
+      speak(translatedText, translationLanguage);
 
       // Switch speaker after translation
-      setCurrentSpeaker('target');
+      const nextSpeaker = currentSpeaker === 'source' ? 'target' : 'source';
+      setCurrentSpeaker(nextSpeaker);
     }
-  }, [translatedText, isTranslating, targetLanguage, speak, currentConversation, addHistoryMessage]);
+  }, [translatedText, isTranslating, currentSpeaker, sourceLanguage, targetLanguage, speak, currentConversation, addHistoryMessage]);
 
   const handleStartRecording = () => {
     // Use the language of the current speaker
@@ -164,9 +182,12 @@ export default function Home() {
     setSourceLanguage(targetLanguage);
     setTargetLanguage(sourceLanguage);
     setCurrentSpeaker('source');
+    translationProcessedRef.current = false;
   };
 
   const handleSwitchSpeaker = () => {
+    // Reset translation flag when switching speaker
+    translationProcessedRef.current = false;
     setCurrentSpeaker(currentSpeaker === 'source' ? 'target' : 'source');
   };
 
