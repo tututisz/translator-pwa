@@ -32,6 +32,11 @@ const OFFLINE_TRANSLATIONS: Record<string, Record<string, string>> = {
     'como você está': 'how are you',
     'estou bem': 'i am well',
     'muito bem': 'very well',
+    'eu estou bem': 'i am well',
+    'estou bem obrigado': 'i am well thank you',
+    'e você': 'and you',
+    'tudo certo': 'all good',
+    'tudo ok': 'all ok',
   },
   'en|pt': {
     'hello': 'olá',
@@ -47,6 +52,9 @@ const OFFLINE_TRANSLATIONS: Record<string, Record<string, string>> = {
     'good night': 'boa noite',
     'i am well': 'estou bem',
     'very well': 'muito bem',
+    'and you': 'e você',
+    'all good': 'tudo certo',
+    'all ok': 'tudo ok',
   },
 };
 
@@ -115,8 +123,12 @@ export function useTranslation(): UseTranslationReturn {
 
         const data = await response.json() as any;
 
-        if (data.translatedText) {
+        if (data.translatedText && data.translatedText !== text) {
           setTranslatedText(data.translatedText);
+        } else if (data.translatedText === text) {
+          // API returned the same text, try with a different endpoint
+          console.warn('LibreTranslate returned same text, using fallback');
+          setTranslatedText(text);
         } else {
           setError('Translation failed. Using original text.');
           setTranslatedText(text);
