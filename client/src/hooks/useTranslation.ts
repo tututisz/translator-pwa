@@ -29,6 +29,9 @@ const OFFLINE_TRANSLATIONS: Record<string, Record<string, string>> = {
     'tchau': 'bye',
     'bom dia': 'good morning',
     'boa noite': 'good night',
+    'como você está': 'how are you',
+    'estou bem': 'i am well',
+    'muito bem': 'very well',
   },
   'en|pt': {
     'hello': 'olá',
@@ -37,11 +40,13 @@ const OFFLINE_TRANSLATIONS: Record<string, Record<string, string>> = {
     'please': 'por favor',
     'yes': 'sim',
     'no': 'não',
-    'how are you': 'tudo bem',
+    'how are you': 'como você está',
     'goodbye': 'adeus',
     'bye': 'tchau',
     'good morning': 'bom dia',
     'good night': 'boa noite',
+    'i am well': 'estou bem',
+    'very well': 'muito bem',
   },
 };
 
@@ -78,44 +83,46 @@ export function useTranslation(): UseTranslationReturn {
         return;
       }
 
-      // Build query parameters
-      const params = new URLSearchParams({
-        q: text,
-        langpair: `${sourceLanguage}|${targetLanguage}`,
-      });
-
-      // Try to fetch from API with timeout
+      // Use LibreTranslate API
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
 
       try {
-        const translationResponse = await fetch(
-          `https://api.mymemory.translated.net/get?${params.toString()}`,
-          { signal: controller.signal }
+        const sourceLang = LANGUAGE_CODES[sourceLanguage] || sourceLanguage;
+        const targetLang = LANGUAGE_CODES[targetLanguage] || targetLanguage;
+
+        const response = await fetch(
+          'https://libretranslate.de/translate',
+          {
+            method: 'POST',
+            signal: controller.signal,
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              q: text,
+              source_language: sourceLang,
+              target_language: targetLang,
+            }),
+          }
         );
 
         clearTimeout(timeoutId);
 
-        if (!translationResponse.ok) {
+        if (!response.ok) {
           throw new Error('Translation service error');
         }
 
-        const data = await translationResponse.json() as any;
+        const data = await response.json() as any;
 
-        if (data.responseStatus === 200 && data.responseData?.translatedText) {
-          setTranslatedText(data.responseData.translatedText);
-        } else if (data.responseStatus === 429) {
-          setError('Too many requests. Please wait a moment.');
-          // Use text as fallback
-          setTranslatedText(text);
+        if (data.translatedText) {
+          setTranslatedText(data.translatedText);
         } else {
           setError('Translation failed. Using original text.');
-          // Use text as fallback
           setTranslatedText(text);
         }
       } catch (fetchErr) {
         clearTimeout(timeoutId);
-        // If API fails, use original text as fallback
         console.error('Translation API error:', fetchErr);
         setTranslatedText(text);
         setError('Translation service unavailable. Showing original text.');
