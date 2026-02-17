@@ -143,7 +143,7 @@ export default function Home() {
       const nextSpeaker = currentSpeaker === 'source' ? 'target' : 'source';
       setCurrentSpeaker(nextSpeaker);
     }
-  }, [translatedText, isTranslating, currentSpeaker, sourceLanguage, targetLanguage, speak, currentConversation, addHistoryMessage]);
+  }, [translatedText, isTranslating]);
 
   // Filter messages by language
   const sourceMessages = allMessages.filter((msg) => msg.language === sourceLanguage);

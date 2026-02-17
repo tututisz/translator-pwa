@@ -56,7 +56,7 @@ export function ConversationPanel({
             <p className="text-center">No messages yet. Start speaking!</p>
           </div>
         ) : (
-          messages.map((msg) => {
+          messages.map((msg, index) => {
             const normalizedTimestamp = msg.timestamp instanceof Date ? msg.timestamp : new Date(msg.timestamp);
             return (
               <Card
@@ -67,6 +67,16 @@ export function ConversationPanel({
               >
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-xs font-semibold text-muted-foreground bg-muted px-2 py-0.5 rounded">
+                        #{index + 1}
+                      </span>
+                      {msg.isTranslation && (
+                        <span className="text-xs font-semibold text-accent bg-accent/10 px-2 py-0.5 rounded">
+                          Translation
+                        </span>
+                      )}
+                    </div>
                     <p className="text-sm text-foreground break-words">{msg.text}</p>
                     <p className="text-xs text-muted-foreground mt-1">
                       {normalizedTimestamp.toLocaleTimeString()}
