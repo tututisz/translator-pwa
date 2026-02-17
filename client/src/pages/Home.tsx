@@ -29,6 +29,13 @@ const LANGUAGE_NAMES: Record<string, string> = {
   'es': 'Español',
   'fr': 'Français',
   'ko': '한국어',
+  'it': 'Italiano',
+  'de': 'Deutsch',
+  'zh': '中文',
+  'ja': '日本語',
+  'ru': 'Русский',
+  'ar': 'العربية',
+  'hi': 'हिन्दी',
 };
 
 const LANGUAGE_COLORS: Record<string, string> = {
@@ -37,6 +44,13 @@ const LANGUAGE_COLORS: Record<string, string> = {
   'es': 'text-yellow-600',
   'fr': 'text-red-600',
   'ko': 'text-purple-600',
+  'it': 'text-orange-600',
+  'de': 'text-gray-600',
+  'zh': 'text-emerald-600',
+  'ja': 'text-pink-600',
+  'ru': 'text-indigo-600',
+  'ar': 'text-teal-600',
+  'hi': 'text-amber-600',
 };
 
 export default function Home() {

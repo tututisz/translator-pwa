@@ -14,6 +14,13 @@ const LANGUAGES = [
   { code: 'es', name: 'Español', flag: '🇪🇸' },
   { code: 'fr', name: 'Français', flag: '🇫🇷' },
   { code: 'ko', name: '한국어', flag: '🇰🇷' },
+  { code: 'it', name: 'Italiano', flag: '🇮🇹' },
+  { code: 'de', name: 'Deutsch', flag: '🇩🇪' },
+  { code: 'zh', name: '中文', flag: '🇨🇳' },
+  { code: 'ja', name: '日本語', flag: '🇯🇵' },
+  { code: 'ru', name: 'Русский', flag: '🇷🇺' },
+  { code: 'ar', name: 'العربية', flag: '🇸🇦' },
+  { code: 'hi', name: 'हिन्दी', flag: '🇮🇳' },
 ];
 
 export function LanguageSelector({ value, onChange, label }: LanguageSelectorProps) {

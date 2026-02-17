@@ -17,6 +17,13 @@ const LANGUAGE_CODES: Record<string, string> = {
   'es': 'es-ES',
   'fr': 'fr-FR',
   'ko': 'ko-KR',
+  'it': 'it-IT',
+  'de': 'de-DE',
+  'zh': 'zh-CN',
+  'ja': 'ja-JP',
+  'ru': 'ru-RU',
+  'ar': 'ar-SA',
+  'hi': 'hi-IN',
 };
 
 export function useSpeechRecognition(): UseSpeechRecognitionReturn {
