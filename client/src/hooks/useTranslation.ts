@@ -123,12 +123,8 @@ export function useTranslation(): UseTranslationReturn {
 
         const data = await response.json() as any;
 
-        if (data.translatedText && data.translatedText !== text) {
+        if (data.translatedText) {
           setTranslatedText(data.translatedText);
-        } else if (data.translatedText === text) {
-          // API returned the same text, try with a different endpoint
-          console.warn('LibreTranslate returned same text, using fallback');
-          setTranslatedText(text);
         } else {
           setError('Translation failed. Using original text.');
           setTranslatedText(text);
