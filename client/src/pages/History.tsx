@@ -4,7 +4,8 @@ import { Card } from '@/components/ui/card';
 import { MessageBubble } from '@/components/MessageBubble';
 import { useConversationHistory, Conversation } from '@/hooks/useConversationHistory';
 import { useSummary } from '@/hooks/useSummary';
-import { ArrowLeft, Trash2, Download, FileText } from 'lucide-react';
+import { useTextToSpeech } from '@/hooks/useTextToSpeech';
+import { ArrowLeft, Trash2, Download, FileText, Volume2 } from 'lucide-react';
 import { Link } from 'wouter';
 
 const LANGUAGE_NAMES: Record<string, string> = {
@@ -26,6 +27,7 @@ export default function History() {
   const { conversations, currentConversation, deleteConversation, loadConversation } =
     useConversationHistory();
   const { summary, isGenerating, generateSummary } = useSummary();
+  const { speak } = useTextToSpeech();
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(
     currentConversation
   );
@@ -43,6 +45,30 @@ export default function History() {
         setSelectedConversation(null);
       }
     }
+  };
+
+  const groupMessages = (messages: any[]) => {
+    const groupedMessages = [];
+    for (let i = 0; i < messages.length; i++) {
+      const msg = messages[i];
+      if (!msg.isTranslation) {
+        // Look for the next translation
+        const nextMsg = messages[i + 1];
+        if (nextMsg && nextMsg.isTranslation) {
+          groupedMessages.push({
+            original: msg,
+            translation: nextMsg
+          });
+          i++; // Skip the translation as it's now grouped
+        } else {
+          groupedMessages.push({
+            original: msg,
+            translation: null
+          });
+        }
+      }
+    }
+    return groupedMessages;
   };
 
   const handleGenerateSummary = async () => {
@@ -383,56 +409,33 @@ export default function History() {
             <div class="conversation">
                 <h2>💬 Conversa Completa</h2>
                 <div class="messages">
-                    ${(() => {
-                        // Group messages by original and translation pairs
-                        const groupedMessages = [];
-                        for (let i = 0; i < conv.messages.length; i++) {
-                            const msg = conv.messages[i];
-                            if (!msg.isTranslation) {
-                                // Look for the next translation
-                                const nextMsg = conv.messages[i + 1];
-                                if (nextMsg && nextMsg.isTranslation) {
-                                    groupedMessages.push({
-                                        original: msg,
-                                        translation: nextMsg
-                                    });
-                                    i++; // Skip the translation as it's now grouped
-                                } else {
-                                    groupedMessages.push({
-                                        original: msg,
-                                        translation: null
-                                    });
-                                }
-                            }
-                        }
-                        
-                        return groupedMessages.map((group, index) => {
-                            const normalizedTimestamp = group.original.timestamp instanceof Date ? group.original.timestamp : new Date(group.original.timestamp);
-                            return `
-                            <div class="message ${group.original.language === conv.sourceLanguage ? 'source' : 'target'}">
-                                <div class="message-avatar">
-                                    ${group.original.language === conv.sourceLanguage ? '👤' : '🤖'}
+                    ${conv.messages.map((msg, index) => {
+                        const normalizedTimestamp = msg.timestamp instanceof Date ? msg.timestamp : new Date(msg.timestamp);
+                        const isSource = msg.language === conv.sourceLanguage;
+                        return `
+                        <div class="message ${isSource ? 'source' : 'target'}">
+                            <div class="message-avatar">
+                                ${isSource ? '👤' : '🤖'}
+                            </div>
+                            <div class="message-content">
+                                <div class="message-text">
+                                    <div class="original-text">
+                                        ${msg.text}
+                                    </div>
+                                    ${msg.isTranslation ? `
+                                    <div class="translation-text">
+                                        Tradução
+                                    </div>
+                                    ` : ''}
                                 </div>
-                                <div class="message-content">
-                                    <div class="message-text">
-                                        <div class="original-text">
-                                            ${group.original.text}
-                                        </div>
-                                        ${group.translation ? `
-                                        <div class="translation-text">
-                                            ${group.translation.text}
-                                        </div>
-                                        ` : ''}
-                                    </div>
-                                    <div class="message-meta">
-                                        ${LANGUAGE_NAMES[group.original.language]} • ${normalizedTimestamp.toLocaleTimeString('pt-BR')}
-                                        ${group.translation ? ` • ${LANGUAGE_NAMES[group.translation.language]}` : ''}
-                                    </div>
+                                <div class="message-meta">
+                                    ${LANGUAGE_NAMES[msg.language]} • ${normalizedTimestamp.toLocaleTimeString('pt-BR')}
+                                    ${msg.isTranslation ? ' • Tradução' : ''}
                                 </div>
                             </div>
-                            `;
-                        }).join('');
-                    })()}
+                        </div>
+                        `;
+                    }).join('')}
                 </div>
             </div>
         </div>
@@ -641,14 +644,47 @@ export default function History() {
                       No messages in this conversation
                     </p>
                   ) : (
-                    selectedConversation.messages.map((msg) => (
-                      <MessageBubble
-                        key={msg.id}
-                        text={msg.text}
-                        language={msg.language}
-                        timestamp={msg.timestamp}
-                        isTranslation={msg.isTranslation}
-                      />
+                    groupMessages(selectedConversation.messages).map((group, index) => (
+                      <div key={index} className={`flex gap-3 ${group.original.language === selectedConversation.sourceLanguage ? 'justify-start' : 'justify-end'}`}>
+                        <div className={`max-w-xs lg:max-w-md rounded-2xl px-4 py-3 border ${
+                          group.original.language === selectedConversation.sourceLanguage 
+                            ? 'bg-blue-50 border-blue-200 text-blue-900' 
+                            : 'bg-green-50 border-green-200 text-green-900'
+                        }`}>
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex-1">
+                              <p className="text-sm font-medium mb-1">
+                                {LANGUAGE_NAMES[group.original.language]}
+                                {group.translation && ` • ${LANGUAGE_NAMES[group.translation.language]}`}
+                              </p>
+                              <div className="space-y-2">
+                                <p className="text-base font-semibold break-words">
+                                  {group.original.text}
+                                </p>
+                                {group.translation && (
+                                  <p className="text-sm opacity-80 italic break-words border-t border-current/20 pt-2">
+                                    {group.translation.text}
+                                  </p>
+                                )}
+                              </div>
+                              <p className="text-xs opacity-70 mt-2">
+                                {group.original.timestamp instanceof Date 
+                                  ? group.original.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                                  : new Date(group.original.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                                }
+                              </p>
+                            </div>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => speak(group.original.text, group.original.language)}
+                              className="flex-shrink-0 -mr-2"
+                            >
+                              <Volume2 className="w-4 h-4 opacity-50" />
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
                     ))
                   )}
                 </div>

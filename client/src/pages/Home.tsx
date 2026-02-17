@@ -1,18 +1,16 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Mic, MicOff, Volume2, VolumeX, History as HistoryIcon, Archive, FileText } from 'lucide-react';
+import { Mic, MicOff, Volume2, VolumeX, History as HistoryIcon, Archive } from 'lucide-react';
 import { Link } from 'wouter';
 import { LanguageSelector } from '@/components/LanguageSelector';
 import { ConversationPanel } from '@/components/ConversationPanel';
 import { AudioWaveform } from '@/components/AudioWaveform';
-import { SummaryReport } from '@/components/SummaryReport';
 import { useSpeechRecognition } from '@/hooks/useSpeechRecognition';
 import { useTranslation } from '@/hooks/useTranslation';
 import { useTextToSpeech } from '@/hooks/useTextToSpeech';
 import { useConversationHistory } from '@/hooks/useConversationHistory';
 import { useOfflineDictionary } from '@/hooks/useOfflineDictionary';
-import { useSummary } from '@/hooks/useSummary';
 import { nanoid } from 'nanoid';
 
 interface Message {
@@ -59,7 +57,6 @@ export default function Home() {
   const [allMessages, setAllMessages] = useState<Message[]>([]);
   const [isWaiting, setIsWaiting] = useState(false);
   const [currentSpeaker, setCurrentSpeaker] = useState<'source' | 'target'>('source');
-  const [showSummary, setShowSummary] = useState(false);
 
   // Track if we've already processed a translation
   const translationProcessedRef = useRef(false);
@@ -72,7 +69,6 @@ export default function Home() {
     useSpeechRecognition();
   const { translatedText, isTranslating, translate } = useTranslation();
   const { isSpeaking, speak, stop } = useTextToSpeech();
-  const { summary, isGenerating, generateSummary } = useSummary();
 
   // Initialize conversation on mount
   useEffect(() => {
@@ -204,11 +200,6 @@ export default function Home() {
     translationProcessedRef.current = false;
   };
 
-  const handleGenerateSummary = async () => {
-    await generateSummary(allMessages, sourceLanguage, targetLanguage);
-    setShowSummary(true);
-  };
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-secondary/20">
       {/* Header */}
@@ -223,16 +214,6 @@ export default function Home() {
             </div>
             <div className="flex items-center gap-2">
               <p className="text-sm text-muted-foreground">Real-time translation with audio</p>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleGenerateSummary}
-                disabled={allMessages.length === 0 || isGenerating}
-                className="gap-2"
-              >
-                <FileText className="w-4 h-4" />
-                {isGenerating ? 'Generating...' : 'Summary'}
-              </Button>
               <Button
                 variant="outline"
                 size="sm"
@@ -393,17 +374,6 @@ export default function Home() {
           </Card>
         </div>
       </main>
-
-      {/* Summary Report Modal */}
-      {showSummary && summary && (
-        <SummaryReport
-          summary={summary.summary}
-          keyPoints={summary.keyPoints}
-          errors={summary.errors}
-          statistics={summary.statistics}
-          onClose={() => setShowSummary(false)}
-        />
-      )}
     </div>
   );
 }
