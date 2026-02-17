@@ -40,8 +40,7 @@ const LANGUAGE_COLORS: Record<string, string> = {
 export default function Home() {
   const [sourceLanguage, setSourceLanguage] = useState('pt');
   const [targetLanguage, setTargetLanguage] = useState('en');
-  const [sourceMessages, setSourceMessages] = useState<Message[]>([]);
-  const [targetMessages, setTargetMessages] = useState<Message[]>([]);
+  const [allMessages, setAllMessages] = useState<Message[]>([]);
   const [isWaiting, setIsWaiting] = useState(false);
   const [currentSpeaker, setCurrentSpeaker] = useState<'source' | 'target'>('source');
 
@@ -86,12 +85,8 @@ export default function Home() {
       timestamp: new Date(),
     };
 
-    // Add to the correct panel based on spoken language
-    if (spokenLanguage === sourceLanguage) {
-      setSourceMessages((prev) => [...prev, msg]);
-    } else {
-      setTargetMessages((prev) => [...prev, msg]);
-    }
+    // Add to all messages
+    setAllMessages((prev) => [...prev, msg]);
 
     // Add to history
     if (currentConversation) {
@@ -127,12 +122,8 @@ export default function Home() {
         isTranslation: true,
       };
 
-      // Add to the panel matching the translation language
-      if (translationLanguage === sourceLanguage) {
-        setSourceMessages((prev) => [...prev, translationMsg]);
-      } else {
-        setTargetMessages((prev) => [...prev, translationMsg]);
-      }
+      // Add to all messages
+      setAllMessages((prev) => [...prev, translationMsg]);
 
       // Add to history
       if (currentConversation) {
@@ -154,6 +145,10 @@ export default function Home() {
     }
   }, [translatedText, isTranslating, currentSpeaker, sourceLanguage, targetLanguage, speak, currentConversation, addHistoryMessage]);
 
+  // Filter messages by language
+  const sourceMessages = allMessages.filter((msg) => msg.language === sourceLanguage);
+  const targetMessages = allMessages.filter((msg) => msg.language === targetLanguage);
+
   const handleStartRecording = () => {
     // Use the language of the current speaker
     const speakerLanguage = currentSpeaker === 'source' ? sourceLanguage : targetLanguage;
@@ -165,11 +160,11 @@ export default function Home() {
   };
 
   const handleClearSource = () => {
-    setSourceMessages([]);
+    setAllMessages((prev) => prev.filter((msg) => msg.language !== sourceLanguage));
   };
 
   const handleClearTarget = () => {
-    setTargetMessages([]);
+    setAllMessages((prev) => prev.filter((msg) => msg.language !== targetLanguage));
   };
 
   const handleSwapLanguages = () => {
@@ -177,10 +172,6 @@ export default function Home() {
     setTargetLanguage(sourceLanguage);
     setCurrentSpeaker('source');
     translationProcessedRef.current = false;
-    // Swap messages too
-    const temp = sourceMessages;
-    setSourceMessages(targetMessages);
-    setTargetMessages(temp);
   };
 
   const handleSwitchSpeaker = () => {
@@ -190,8 +181,7 @@ export default function Home() {
 
   const handleArchiveConversation = () => {
     archiveConversation(sourceLanguage, targetLanguage);
-    setSourceMessages([]);
-    setTargetMessages([]);
+    setAllMessages([]);
     setCurrentSpeaker('source');
     translationProcessedRef.current = false;
   };
