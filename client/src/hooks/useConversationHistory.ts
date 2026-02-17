@@ -150,6 +150,28 @@ export function useConversationHistory() {
     }
   }, [conversations, hydrateConversation]);
 
+  const archiveConversation = useCallback(
+    (sourceLanguage: string, targetLanguage: string): Conversation => {
+      // Create a new conversation, archiving the current one
+      const newConversation: Conversation = {
+        id: nanoid(),
+        sourceLanguage,
+        targetLanguage,
+        messages: [],
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      // Keep current conversation in history and create new one
+      const updated = [newConversation, ...conversations].slice(0, MAX_CONVERSATIONS);
+      saveConversations(updated);
+      setCurrentConversation(newConversation);
+
+      return newConversation;
+    },
+    [conversations, saveConversations]
+  );
+
   return {
     conversations: conversations.map(hydrateConversation),
     currentConversation: currentConversation ? hydrateConversation(currentConversation) : null,
@@ -158,5 +180,6 @@ export function useConversationHistory() {
     deleteConversation,
     clearAllConversations,
     loadConversation,
+    archiveConversation,
   };
 }

@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Mic, MicOff, Volume2, VolumeX, History as HistoryIcon } from 'lucide-react';
+import { Mic, MicOff, Volume2, VolumeX, History as HistoryIcon, Archive } from 'lucide-react';
 import { Link } from 'wouter';
 import { LanguageSelector } from '@/components/LanguageSelector';
 import { ConversationPanel } from '@/components/ConversationPanel';
@@ -48,7 +48,7 @@ export default function Home() {
   // Track if we've already processed a translation
   const translationProcessedRef = useRef(false);
 
-  const { createConversation, addMessage: addHistoryMessage, currentConversation } =
+  const { createConversation, addMessage: addHistoryMessage, currentConversation, archiveConversation } =
     useConversationHistory();
   const { isOffline } = useOfflineDictionary();
 
@@ -184,9 +184,16 @@ export default function Home() {
   };
 
   const handleSwitchSpeaker = () => {
-    // Reset translation flag when switching speaker
     translationProcessedRef.current = false;
     setCurrentSpeaker(currentSpeaker === 'source' ? 'target' : 'source');
+  };
+
+  const handleArchiveConversation = () => {
+    archiveConversation(sourceLanguage, targetLanguage);
+    setSourceMessages([]);
+    setTargetMessages([]);
+    setCurrentSpeaker('source');
+    translationProcessedRef.current = false;
   };
 
   return (
@@ -203,6 +210,15 @@ export default function Home() {
             </div>
             <div className="flex items-center gap-2">
               <p className="text-sm text-muted-foreground">Real-time translation with audio</p>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleArchiveConversation}
+                className="gap-2"
+              >
+                <Archive className="w-4 h-4" />
+                Archive
+              </Button>
               <Link href="/history">
                 <Button variant="outline" size="sm" className="gap-2">
                   <HistoryIcon className="w-4 h-4" />
