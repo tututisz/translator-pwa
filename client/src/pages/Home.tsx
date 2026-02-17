@@ -69,34 +69,43 @@ export default function Home() {
     if (transcript && !isListening) {
       handleTranscriptComplete(transcript);
     }
-  }, [transcript, isListening]);
+  }, [transcript, isListening, currentSpeaker, sourceLanguage, targetLanguage, currentConversation, addHistoryMessage]);
 
   const handleTranscriptComplete = async (text: string) => {
     if (!text.trim()) return;
 
-    // Add source message
-    const sourceMsg: Message = {
+    // Determine which language was spoken based on current speaker
+    const spokenLanguage = currentSpeaker === 'source' ? sourceLanguage : targetLanguage;
+    const otherLanguage = currentSpeaker === 'source' ? targetLanguage : sourceLanguage;
+
+    // Add message to the appropriate panel
+    const msg: Message = {
       id: nanoid(),
       text: text.trim(),
-      language: sourceLanguage,
+      language: spokenLanguage,
       timestamp: new Date(),
     };
-    setSourceMessages((prev) => [...prev, sourceMsg]);
+
+    if (currentSpeaker === 'source') {
+      setSourceMessages((prev) => [...prev, msg]);
+    } else {
+      setTargetMessages((prev) => [...prev, msg]);
+    }
 
     // Add to history
     if (currentConversation) {
       addHistoryMessage({
-        id: sourceMsg.id,
-        text: sourceMsg.text,
-        language: sourceLanguage,
-        timestamp: sourceMsg.timestamp,
+        id: msg.id,
+        text: msg.text,
+        language: spokenLanguage,
+        timestamp: msg.timestamp,
       });
     }
 
     // Reset translation flag and translate
     translationProcessedRef.current = false;
     setIsWaiting(true);
-    await translate(text.trim(), sourceLanguage, targetLanguage);
+    await translate(text.trim(), spokenLanguage, otherLanguage);
   };
 
   // Handle translation result - only process once per translation
@@ -134,7 +143,9 @@ export default function Home() {
   }, [translatedText, isTranslating, targetLanguage, speak, currentConversation, addHistoryMessage]);
 
   const handleStartRecording = () => {
-    startListening(sourceLanguage);
+    // Use the language of the current speaker
+    const speakerLanguage = currentSpeaker === 'source' ? sourceLanguage : targetLanguage;
+    startListening(speakerLanguage);
   };
 
   const handleStopRecording = () => {
