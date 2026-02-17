@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Mic, MicOff, Volume2, VolumeX, History as HistoryIcon } from 'lucide-react';
@@ -42,13 +42,15 @@ export default function Home() {
   const [targetLanguage, setTargetLanguage] = useState('en');
   const [sourceMessages, setSourceMessages] = useState<Message[]>([]);
   const [targetMessages, setTargetMessages] = useState<Message[]>([]);
-  const [currentInput, setCurrentInput] = useState('');
   const [isWaiting, setIsWaiting] = useState(false);
   const [currentSpeaker, setCurrentSpeaker] = useState<'source' | 'target'>('source');
 
+  // Track if we've already processed a translation
+  const translationProcessedRef = useRef(false);
+
   const { createConversation, addMessage: addHistoryMessage, currentConversation } =
     useConversationHistory();
-  const { isOffline, getOfflineTranslation } = useOfflineDictionary();
+  const { isOffline } = useOfflineDictionary();
 
   const { isListening, transcript, interimTranscript, startListening, stopListening } =
     useSpeechRecognition();
@@ -91,15 +93,18 @@ export default function Home() {
       });
     }
 
-    // Translate
+    // Reset translation flag and translate
+    translationProcessedRef.current = false;
     setIsWaiting(true);
     await translate(text.trim(), sourceLanguage, targetLanguage);
-    setIsWaiting(false);
   };
 
-  // Handle translation result
+  // Handle translation result - only process once per translation
   useEffect(() => {
-    if (translatedText && !isTranslating) {
+    if (translatedText && !isTranslating && !translationProcessedRef.current) {
+      translationProcessedRef.current = true;
+      setIsWaiting(false);
+
       const targetMsg: Message = {
         id: nanoid(),
         text: translatedText,
